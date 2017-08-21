@@ -21,24 +21,58 @@ import static rx.Observable.just;
 public class Chapter6 {
 
 	@Test
-	public void sample_9() throws Exception {
+	public void testSampling() throws Exception {
 		long startTime = System.currentTimeMillis();
-		Observable
-				.interval(7, MILLISECONDS)
+		Observable<String> result = Observable
+				.interval(7, MILLISECONDS)		// 아무리 7ms마다 이벤트가 발생을 해도,
 				.timestamp()
-				.sample(1, SECONDS)
+				.sample(1, SECONDS)				// 1초마다 나온다.
 				.map(ts -> ts.getTimestampMillis() - startTime + "ms: " + ts.getValue())
-				.take(5)
-				.subscribe(System.out::println);
+				.take(5);
+		result.subscribe(System.out::println);
+
+		result.toBlocking().last();
 	}
 
 	@Test
-	public void sample_25() throws Exception {
-		Observable<String> delayedNames = delayedNames();
+	public void testSampling2() throws Exception {
+		Observable<String> names =
+				just("Mary",
+						"Patricia",
+						"Linda",		// 1초의 마지막 0.9초에 나오는 것 -> Linda
+						"Barbara",
+						"Elizabeth",
+						"Jennifer",
+						"Maria",
+						"Susan",
+						"Margaret",
+						"Dorothy");
 
-		delayedNames
-				.sample(1, SECONDS)
-				.subscribe(System.out::println);
+		Observable<Long> absoluteDelayMillis =
+				just(0.1,
+						0.6,
+						0.9,
+						1.1,
+						3.3,
+						3.4,
+						3.5,
+						3.6,
+						4.4,
+						4.8)
+						.map(d -> (long) (d * 1_000));
+
+		final Observable<String> delayedNames = names
+				.zipWith(absoluteDelayMillis,
+						(n, d) ->
+								just(n)
+										.delay(d, MILLISECONDS))
+				.flatMap(o -> o);
+
+		Observable<String> sample = delayedNames
+				.sample(1, SECONDS);
+		sample.subscribe(System.out::println);
+
+		sample.toBlocking().last();
 	}
 
 	@Test
