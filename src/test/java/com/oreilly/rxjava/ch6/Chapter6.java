@@ -40,13 +40,14 @@ public class Chapter6 {
 				just("Mary",
 						"Patricia",
 						"Linda",		// 1초의 마지막 0.9초에 나오는 것 -> Linda
-						"Barbara",
+						"Barbara",	// 2초의 마지막 1.1초에 나오는 것 -> Barbara
+										// 3초에 음슴. 한박자 쉬고!
 						"Elizabeth",
 						"Jennifer",
 						"Maria",
-						"Susan",
+						"Susan",		// 4초의 마지막 3.6초에 나오는 것 -> Susan
 						"Margaret",
-						"Dorothy");
+						"Dorothy");	// 5초의 마지막 4.8초에 나오는 것 -> Dorothy
 
 		Observable<Long> absoluteDelayMillis =
 				just(0.1,
@@ -76,66 +77,31 @@ public class Chapter6 {
 	}
 
 	@Test
-	public void sample_37() throws Exception {
-		Observable<String> delayedNames = delayedNames();
-
-		delayedNames
-				.concatWith(delayedCompletion())
-				.sample(1, SECONDS)
-				.subscribe(System.out::println);
-
-	}
-
-	private Observable<String> delayedNames() {
-		Observable<String> names =
-				just("Mary", "Patricia", "Linda",
+	public void throttleFirstExample() throws Exception {
+		Observable<String> delayedNames =
+				just("Mary",
+						"Patricia",
+						"Linda",
 						"Barbara",
-						"Elizabeth", "Jennifer", "Maria", "Susan",
-						"Margaret", "Dorothy");
+						"Elizabeth",
+						"Jennifer",
+						"Maria",
+						"Susan",
+						"Margaret",
+						"Dorothy");
 
-		Observable<Long> absoluteDelayMillis =
-				just(0.1, 0.6, 0.9,
-						1.1,
-						3.3, 3.4, 3.5, 3.6,
-						4.4, 4.8)
-						.map(d -> (long) (d * 1_000));
+		Observable<String> stringObservable = delayedNames
+				.throttleFirst(1, SECONDS);		// 일단 기다렸다가 처음껏이 나오면 끝낸다.
+		stringObservable.subscribe(System.out::println);
 
-		final Observable<String> delayedNames = names
-				.zipWith(absoluteDelayMillis,
-						(n, d) ->
-								just(n)
-										.delay(d, MILLISECONDS))
-				.flatMap(o -> o);
-		return delayedNames;
-	}
-
-	static <T> Observable<T> delayedCompletion() {
-		return Observable.<T>empty().delay(1, SECONDS);
+		stringObservable.toBlocking().last();
 	}
 
 	@Test
-	public void sample_64() throws Exception {
-		Observable<Long> obs = Observable.interval(20, MILLISECONDS);
-
-		//equivalent:
-		obs.sample(1, SECONDS);
-		obs.sample(Observable.interval(1, SECONDS));
-	}
-
-	@Test
-	public void sample_73() throws Exception {
-		Observable<String> delayedNames = delayedNames();
-
-		delayedNames
-				.throttleFirst(1, SECONDS)
-				.subscribe(System.out::println);
-	}
-
-	@Test
-	public void sample_93() throws Exception {
+	public void bufferExample() throws Exception {
 		Observable
 				.range(1, 7)  //1, 2, 3, ... 7
-				.buffer(3)
+				.buffer(3)					// 3개씩 버퍼를 두고 나온다.
 				.subscribe((List<Integer> list) -> {
 							System.out.println(list);
 						}
@@ -145,7 +111,7 @@ public class Chapter6 {
 	Repository repository = new SomeRepository();
 
 	@Test
-	public void sample_105() throws Exception {
+	public void buffer10Example() throws Exception {
 		Observable<Record> events = Observable.range(1, 100).map(x -> new Record());
 
 		events
@@ -155,61 +121,77 @@ public class Chapter6 {
 				.buffer(10)
 				.subscribe(repository::storeAll);
 
+		events.toBlocking().last();
+
 	}
 
 	@Test
-	public void sample_120() throws Exception {
-		Random random = new Random();
-		Observable
-				.defer(() -> just(random.nextGaussian()))
-				.repeat(1000)
-				.buffer(100, 1)
-				.map(this::averageOfList)
-				.subscribe(System.out::println);
-	}
-
-	private double averageOfList(List<Double> list) {
-		return list
-				.stream()
-				.collect(Collectors.averagingDouble(x -> x));
-	}
-
-	@Test
-	public void sample_139() throws Exception {
+	public void BufferSliding() throws Exception {
 		Observable<List<Integer>> odd = Observable
 				.range(1, 7)
-				.buffer(1, 2);
+				.buffer(1, 2);	// 각각 1개씩 나오는데, 2개씩 슬라이딩을 한다.
+											// [1],2,3,4,5,6,7 -> 1,2,[3],4,5,6,7 -> 1,2,3,4,[5],6,7
+
 		odd.subscribe(System.out::println);
 	}
 
 	@Test
-	public void sample_147() throws Exception {
+	public void flatMapIterableExample() throws Exception {
 		Observable<Integer> odd = Observable
 				.range(1, 7)
 				.buffer(1, 2)
-				.flatMapIterable(list -> list);
+				.flatMapIterable(list -> list);		// Flatten 시김
+
+		odd.subscribe(System.out::println);
+
+		odd.toBlocking().last();
 	}
 
 	@Test
 	public void sample_155() throws Exception {
-		Observable<String> delayedNames = delayedNames();
+		Observable<String> delayedNames =
+				just("Mary",
+						"Patricia",
+						"Linda",
+						"Barbara",
+						"Elizabeth",
+						"Jennifer",
+						"Maria",
+						"Susan",
+						"Margaret",
+						"Dorothy");
 
 		delayedNames
-				.buffer(1, SECONDS)
+				.buffer(1, SECONDS)	// 1초동안 나온 모든 이벤트를 다담음
+												// just는 한번에 나옴 -> 다 담음
 				.subscribe(System.out::println);
 	}
 
 	@Test
-	public void sample_164() throws Exception {
+	public void Buffer() throws Exception {
 		Observable<KeyEvent> keyEvents = empty();
 
-		Observable<Integer> eventPerSecond = keyEvents
-				.buffer(1, SECONDS)
+		Observable<List<KeyEvent>> buffer = keyEvents
+				.buffer(1, SECONDS);				//buffer는 List로 떨어진다.
+		Observable<Integer> eventPerSecond = buffer
 				.map(List::size);
 	}
 
+// vs.
+
 	@Test
-	public void sample_173() throws Exception {
+	public void Window() throws Exception {
+		Observable<KeyEvent> keyEvents = empty();
+
+		Observable<Observable<KeyEvent>> windows = keyEvents
+				.window(1, SECONDS);				// 반면 window는 Observable로 떨어진다.
+
+		Observable<Integer> eventPerSecond = windows
+				.flatMap(eventsInSecond -> eventsInSecond.count());
+	}
+
+	@Test
+	public void merge() throws Exception {
 		Observable<Duration> insideBusinessHours = Observable
 				.interval(1, SECONDS)
 				.filter(x -> isBusinessHour())
@@ -221,6 +203,8 @@ public class Chapter6 {
 
 		Observable<Duration> openings = Observable.merge(
 				insideBusinessHours, outsideBusinessHours);
+		// http://reactivex.io/documentation/ko/operators/merge.html
+		// 두개의 Observable을 이렇게 모아준다.
 
 		Observable<TeleData> upstream = empty();
 
@@ -244,15 +228,6 @@ public class Chapter6 {
 		LocalTime localTime = zdt.toLocalTime();
 		return !localTime.isBefore(BUSINESS_START)
 				&& !localTime.isAfter(BUSINESS_END);
-	}
-
-	@Test
-	public void sample_216() throws Exception {
-		Observable<KeyEvent> keyEvents = empty();
-
-		Observable<Observable<KeyEvent>> windows = keyEvents.window(1, SECONDS);
-		Observable<Integer> eventPerSecond = windows
-				.flatMap(eventsInSecond -> eventsInSecond.count());
 	}
 
 }

@@ -10,9 +10,11 @@ interface Repository {
 class SomeRepository implements Repository {
     @Override
     public void store(Record record) {
+        System.out.println("store: " + record);
     }
 
     @Override
     public void storeAll(List<Record> records) {
+        System.out.println("storeAll - nOf records " + records.size());
     }
 }

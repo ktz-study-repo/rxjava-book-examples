@@ -17,8 +17,18 @@ public class Debounce {
 
 	private final TradingPlatform tradingPlatform = new TradingPlatform();
 
+	/**
+	 *
+	 * 어떤 event후에 아무런 event가 발생하지 않으면 event를 발생한다.
+	 * http://reactivex.io/documentation/operators/debounce.html
+	 * 예를 들어, debounced가 100ms하라면,
+	 * ex1) A event 발생 -> 100ms 후에 -> A event 출력
+	 * ex2) A event 발생 -> 50ms 후에 -> B event 발생 -> 100ms 후에 -> B event 출력
+	 *
+	 */
+
 	@Test
-	public void sample_225() throws Exception {
+	public void DebounceExample() throws Exception {
 		Observable<BigDecimal> prices = tradingPlatform.pricesOf("NFLX");
 		Observable<BigDecimal> debounced = prices.debounce(100, MILLISECONDS);
 
@@ -27,69 +37,15 @@ public class Debounce {
 					boolean goodPrice = x.compareTo(BigDecimal.valueOf(150)) > 0;
 					return Observable
 							.empty()
-							.delay(goodPrice? 10 : 100, MILLISECONDS);
+							.delay(goodPrice? 10 : 100, MILLISECONDS);	// 만약에 goodPrice이면, 10ms후에 event 발생
+																		// 만약 goodPrice가 아니면, 100ms후에 event 발생.
 				});
 	}
 
 	@Test
 	public void sample_242() throws Exception {
 		Observable
-				.interval(99, MILLISECONDS)
-				.debounce(100, MILLISECONDS);
+				.interval(99, MILLISECONDS)		// 이렇게 되면 99ms후에는 무조건 이벤트가 되서.
+				.debounce(100, MILLISECONDS);	// 암것도 안나옴.
 	}
-
-	@Test
-	public void sample_249() throws Exception {
-		Observable
-				.interval(99, MILLISECONDS)
-				.debounce(100, MILLISECONDS)
-				.timeout(1, SECONDS);
-	}
-
-	@Test
-	public void sample_48() throws Exception {
-		ConnectableObservable<Long> upstream = Observable
-				.interval(99, MILLISECONDS)
-				.publish();
-		upstream
-				.debounce(100, MILLISECONDS)
-				.timeout(1, SECONDS, upstream.take(1));
-		upstream.connect();
-	}
-
-	@Test
-	public void sample_60() throws Exception {
-		final Observable<Long> upstream = Observable.interval(99, MILLISECONDS);
-
-		upstream
-				.debounce(100, MILLISECONDS)
-				.timeout(1, SECONDS, upstream
-						.take(1)
-						.concatWith(
-								upstream.debounce(100, MILLISECONDS)));
-	}
-
-	@Test
-	public void sample_72() throws Exception {
-		final Observable<Long> upstream = Observable.interval(99, MILLISECONDS);
-
-		upstream
-				.debounce(100, MILLISECONDS)
-				.timeout(1, SECONDS, upstream
-						.take(1)
-						.concatWith(
-								upstream
-										.debounce(100, MILLISECONDS)
-										.timeout(1, SECONDS, upstream)));
-	}
-
-	Observable<Long> timedDebounce(Observable<Long> upstream) {
-		Observable<Long> onTimeout = upstream
-				.take(1)
-				.concatWith(defer(() -> timedDebounce(upstream)));
-		return upstream
-				.debounce(100, MILLISECONDS)
-				.timeout(1, SECONDS, onTimeout);
-	}
-
 }
